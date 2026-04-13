@@ -9,6 +9,14 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 
+// Speed options in ms per step
+const SPEED_OPTIONS = [
+  { label: "0.5×", ms: 1600 },
+  { label: "1×",   ms: 800 },
+  { label: "2×",   ms: 400 },
+  { label: "4×",   ms: 200 },
+];
+
 interface DerivationPanelProps {
   leftDerivation: DerivationStep[];
   rightDerivation: DerivationStep[];
@@ -50,12 +58,23 @@ function DerivationSteps({
 }) {
   const [currentStep, setCurrentStep] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [speedIdx, setSpeedIdx] = useState(1); // default 1× = 800ms
+  const [showAll, setShowAll] = useState(false);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const listRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setCurrentStep(0);
     setIsPlaying(false);
+    setShowAll(false);
   }, [steps]);
+
+  // Auto-scroll the step list to keep the current step visible
+  useEffect(() => {
+    if (!listRef.current) return;
+    const active = listRef.current.querySelector("[data-active='true']");
+    active?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+  }, [currentStep]);
 
   const stopPlayback = useCallback(() => {
     setIsPlaying(false);
@@ -66,6 +85,7 @@ function DerivationSteps({
   }, []);
 
   const startPlayback = useCallback(() => {
+    setShowAll(false);
     setIsPlaying(true);
     setCurrentStep(0);
   }, []);
@@ -80,12 +100,12 @@ function DerivationSteps({
           }
           return prev + 1;
         });
-      }, 800);
+      }, SPEED_OPTIONS[speedIdx].ms);
     }
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
     };
-  }, [isPlaying, steps.length, stopPlayback]);
+  }, [isPlaying, steps.length, stopPlayback, speedIdx]);
 
   if (steps.length === 0) {
     return (
@@ -93,73 +113,99 @@ function DerivationSteps({
     );
   }
 
+  const visibleSteps = showAll ? steps : steps.slice(0, currentStep + 1);
+
   return (
     <div className="space-y-3">
-      <div className="flex items-center gap-2">
+      {/* Controls row */}
+      <div className="flex items-center gap-1.5 flex-wrap">
         <Button
-          variant="outline"
-          size="sm"
-          onClick={() => setCurrentStep(0)}
-          disabled={currentStep === 0}
-        >
-          ⏮
-        </Button>
+          variant="outline" size="sm"
+          onClick={() => { stopPlayback(); setCurrentStep(0); }}
+          disabled={currentStep === 0 && !isPlaying}
+          title="Go to start"
+        >⏮</Button>
         <Button
-          variant="outline"
-          size="sm"
-          onClick={() => setCurrentStep((p) => Math.max(0, p - 1))}
+          variant="outline" size="sm"
+          onClick={() => { stopPlayback(); setCurrentStep((p) => Math.max(0, p - 1)); }}
           disabled={currentStep === 0}
-        >
-          ◀
-        </Button>
+          title="Previous step"
+        >◀</Button>
         {isPlaying ? (
-          <Button variant="outline" size="sm" onClick={stopPlayback}>
-            ⏸
-          </Button>
+          <Button variant="outline" size="sm" onClick={stopPlayback} title="Pause">⏸</Button>
         ) : (
-          <Button variant="outline" size="sm" onClick={startPlayback}>
-            ▶
+          <Button variant="default" size="sm" onClick={startPlayback} title="Play from start" className="gap-1">
+            ▶ Play
           </Button>
         )}
         <Button
-          variant="outline"
-          size="sm"
-          onClick={() =>
-            setCurrentStep((p) => Math.min(steps.length - 1, p + 1))
-          }
+          variant="outline" size="sm"
+          onClick={() => { stopPlayback(); setCurrentStep((p) => Math.min(steps.length - 1, p + 1)); }}
           disabled={currentStep === steps.length - 1}
-        >
-          ▶|
-        </Button>
+          title="Next step"
+        >▶</Button>
         <Button
-          variant="outline"
-          size="sm"
-          onClick={() => setCurrentStep(steps.length - 1)}
+          variant="outline" size="sm"
+          onClick={() => { stopPlayback(); setCurrentStep(steps.length - 1); }}
           disabled={currentStep === steps.length - 1}
-        >
-          ⏭
-        </Button>
-        <span className="text-xs text-muted-foreground ml-2">
-          Step {currentStep + 1} of {steps.length}
+          title="Go to end"
+        >⏭</Button>
+
+        {/* Speed toggle */}
+        <div className="flex items-center gap-0.5 ml-1 border rounded-md overflow-hidden">
+          {SPEED_OPTIONS.map((opt, i) => (
+            <button
+              key={i}
+              onClick={() => setSpeedIdx(i)}
+              className={`px-2 py-1 text-[11px] font-mono transition-colors ${
+                speedIdx === i
+                  ? "bg-primary text-primary-foreground"
+                  : "hover:bg-muted text-muted-foreground"
+              }`}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+
+        <span className="text-xs text-muted-foreground ml-auto">
+          {showAll ? "All" : currentStep + 1} / {steps.length}
         </span>
       </div>
 
-      <div className="space-y-1 max-h-64 overflow-y-auto pr-1">
+      {/* Show All toggle */}
+      <div className="flex items-center justify-between">
+        <span className="text-xs text-muted-foreground">
+          {showAll
+            ? `Showing all ${steps.length} steps`
+            : `Step ${currentStep + 1} of ${steps.length}`}
+        </span>
+        <button
+          onClick={() => { setShowAll((v) => !v); stopPlayback(); if (!showAll) setCurrentStep(steps.length - 1); }}
+          className="text-xs text-primary underline-offset-2 hover:underline"
+        >
+          {showAll ? "Back to step-by-step" : "Show all steps"}
+        </button>
+      </div>
+
+      <div ref={listRef} className="space-y-1 max-h-72 overflow-y-auto pr-1">
         <AnimatePresence mode="popLayout">
-          {steps.slice(0, currentStep + 1).map((step, i) => (
+          {visibleSteps.map((step, i) => (
             <motion.div
               key={`${label}-${i}`}
+              data-active={i === currentStep && !showAll}
               initial={{ opacity: 0, x: -10 }}
               animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.25 }}
-              className={`flex items-start gap-2 text-sm rounded-md px-2 py-1.5 ${
-                i === currentStep
-                  ? "bg-primary/10 border border-primary/20"
-                  : "hover:bg-muted/50"
+              transition={{ duration: 0.2 }}
+              className={`flex items-start gap-2 text-sm rounded px-2 py-1.5 cursor-pointer transition-colors ${
+                i === currentStep && !showAll
+                  ? "bg-blue-50 border border-blue-200"
+                  : "hover:bg-gray-50"
               }`}
+              onClick={() => { stopPlayback(); setShowAll(false); setCurrentStep(i); }}
             >
               <Badge
-                variant="secondary"
+                variant={i === currentStep && !showAll ? "default" : "secondary"}
                 className="shrink-0 mt-0.5 font-mono text-xs"
               >
                 {i}
@@ -168,12 +214,13 @@ function DerivationSteps({
                 <div className="font-mono text-sm break-all">
                   <SententialFormDisplay
                     step={step}
-                    isActive={i === currentStep}
+                    isActive={i === currentStep && !showAll}
                   />
                 </div>
                 {step.productionUsed && (
-                  <div className="text-xs text-muted-foreground mt-0.5">
-                    Apply: {formatProduction(step.productionUsed)}
+                  <div className="text-[11px] text-gray-400 mt-0.5 font-mono">
+                    <span className="text-blue-600">apply:</span>{" "}
+                    {formatProduction(step.productionUsed)}
                   </div>
                 )}
               </div>
@@ -182,15 +229,18 @@ function DerivationSteps({
         </AnimatePresence>
       </div>
 
-      <div className="border-t pt-2 mt-2">
-        <p className="text-xs text-muted-foreground mb-1">
-          {label} Derivation ({steps.length - 1} steps):
+      {/* Compact full derivation string */}
+      <div className="border-t pt-2 mt-1">
+        <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">
+          {label} Derivation ({steps.length - 1} step{steps.length - 1 !== 1 ? "s" : ""}):
         </p>
-        <p className="font-mono text-xs break-all">
+        <p className="font-mono text-[11px] break-all leading-relaxed text-gray-400">
           {steps.map((s, i) => (
             <span key={i}>
-              {i > 0 && <span className="text-muted-foreground"> ⇒ </span>}
-              {formatSententialForm(s.sententialForm)}
+              {i > 0 && <span className="text-blue-400 font-bold"> ⇒ </span>}
+              <span className={i === steps.length - 1 ? "text-green-700 font-semibold" : ""}>
+                {formatSententialForm(s.sententialForm)}
+              </span>
             </span>
           ))}
         </p>
@@ -215,13 +265,13 @@ function SententialFormDisplay({
         return (
           <span
             key={j}
-            className={`${
+            className={
               isExpanded
-                ? "bg-yellow-200 dark:bg-yellow-800 px-0.5 rounded font-bold"
+                ? "bg-yellow-100 px-0.5 rounded font-bold text-yellow-900 ring-1 ring-yellow-200"
                 : isNT
-                ? "text-blue-600 dark:text-blue-400"
-                : "text-green-700 dark:text-green-400"
-            }`}
+                ? "text-blue-600 font-semibold"
+                : "text-green-700"
+            }
           >
             {j > 0 && " "}
             {sym.value}
@@ -231,3 +281,4 @@ function SententialFormDisplay({
     </span>
   );
 }
+

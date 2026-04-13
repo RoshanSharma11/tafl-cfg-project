@@ -10,19 +10,28 @@ interface GrammarEditorProps {
 
 export function GrammarEditor({ value, onChange }: GrammarEditorProps) {
   return (
-    <Card>
+    <Card className="overflow-hidden rounded-md border-gray-200">
       <CardContent className="p-0">
-        <div className="text-xs text-muted-foreground px-3 pt-3 pb-1 flex items-center gap-3 flex-wrap">
-          <span>Format: <code className="bg-muted px-1 rounded">{"A → α | β"}</code></span>
-          <span>Use <code className="bg-muted px-1 rounded">{"->"}</code> or <code className="bg-muted px-1 rounded">{"→"}</code></span>
-          <span>Uppercase = non-terminal</span>
-          <span><code className="bg-muted px-1 rounded">{"ε"}</code> = epsilon</span>
+        <div className="px-3 py-2 bg-gray-50 border-b border-gray-200 flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-gray-500">
+          <span>
+            Format:{" "}
+            <code className="bg-white border border-gray-200 px-1 rounded font-mono">A → α | β</code>
+          </span>
+          <span>
+            <code className="font-mono text-blue-700">UPPERCASE</code> = non-terminal
+          </span>
+          <span>
+            <code className="font-mono text-green-700">lowercase / symbols</code> = terminal
+          </span>
+          <span>
+            <code className="font-mono italic text-gray-500">ε</code> or <code className="font-mono text-gray-500">eps</code> = epsilon
+          </span>
         </div>
         <CodeMirror
           value={value}
-          height="200px"
+          height="190px"
           onChange={onChange}
-          className="border-t text-sm"
+          className="text-sm"
           basicSetup={{
             lineNumbers: true,
             foldGutter: false,
@@ -35,3 +44,5 @@ export function GrammarEditor({ value, onChange }: GrammarEditorProps) {
     </Card>
   );
 }
+
+

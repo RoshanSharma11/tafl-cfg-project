@@ -24,14 +24,14 @@ F -> ( E ) | id`,
     testString: "(())()",
   },
   {
-    name: "Palindromes",
+    name: "Palindromes over {a, b}",
     description: "Generates palindrome strings over {a, b}",
     grammar: `S -> a S a | b S b | a | b | ε`,
     testString: "abba",
   },
   {
-    name: "Simple Strings (aⁿbⁿ)",
-    description: "Generates strings of the form aⁿbⁿ where n ≥ 1",
+    name: "aⁿbⁿ Language",
+    description: "Generates strings of the form aⁿbⁿ (n ≥ 1) — classic CFL",
     grammar: `S -> a S b | a b`,
     testString: "aaabbb",
   },
@@ -41,5 +41,34 @@ F -> ( E ) | id`,
     grammar: `S -> if E then S else S | if E then S | a
 E -> b`,
     testString: "if b then if b then a else a",
+  },
+  {
+    name: "Simple Declarations",
+    description: "Variable declarations: type id, id, ...",
+    grammar: `D -> T L
+T -> int | float | bool
+L -> L , id | id`,
+    testString: "int id , id , id",
+  },
+  {
+    name: "Regular-like: (aab)*",
+    description: "Strings made of repetitions of 'aab'",
+    grammar: `S -> S aab | ε`,
+    testString: "aab aab aab",
+  },
+  {
+    name: "Nested Lists",
+    description: "Lists that can be nested: [ items ] or atoms",
+    grammar: `L -> [ M ] | a
+M -> M , L | L`,
+    testString: "[ a , [ a , a ] ]",
+  },
+  {
+    name: "Boolean Expressions",
+    description: "Boolean algebra: and, or, not with parentheses",
+    grammar: `B -> B or C | C
+C -> C and D | D
+D -> not D | ( B ) | true | false`,
+    testString: "true and not false or true",
   },
 ];
